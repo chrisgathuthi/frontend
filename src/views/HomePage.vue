@@ -1,55 +1,60 @@
-<template>
-  <ion-page>
-    <ion-header :translucent="true">
-      <ion-toolbar>
-        <ion-title>Blank</ion-title>
-      </ion-toolbar>
-    </ion-header>
+<script setup>
+import { userStore } from '@/store/store.js'
+import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router'
 
-    <ion-content :fullscreen="true">
-      <ion-header collapse="condense">
-        <ion-toolbar>
-          <ion-title size="large">Blank</ion-title>
-        </ion-toolbar>
-      </ion-header>
+const store = userStore()
+const router = useRouter()
 
-      <div class="container">
-        <ion-title>Photo gallery</ion-title>
-      </div>
-    </ion-content>
-  </ion-page>
-</template>
+const mergedPosts = ref([])
 
-<script setup lang="ts">
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/vue';
+const mergePosts = () => {
+  if (store.userEntity.subscribers) {
+    return store.userEntity.subscribers.forEach(sub => {
+      mergedPosts.value.push(...sub.posts)
+
+    });
+  }
+}
+onMounted(async () => {
+  await store.fetchUserFromDB()
+  mergePosts()
+  mergedPosts.value.sort((a, b) => {
+    return new Date(a.date) - new Date(b.date)
+  })
+
+})
+const getSubByPostId = (id) => {
+  return store.userEntity.subscribers.find(sub => sub.profile.id === id)
+}
 </script>
 
-<style scoped>
-#container {
-  text-align: center;
-  
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-}
+<template>
+  <ion-page>
+    <ion-content :fullscreen="true" class="ion-padding ion-margin">
+      <ion-row>
+        <ion-col>
+          <ion-card v-for="post in mergedPosts" :key="post.id" class="ion-no-margin ion-margin-vertical">
+            <ion-card-header @click="router.push({ name: 'Profile', params: { id: post.userId } })">
+              <ion-card-subtitle>
+                {{ new Date(post.date).toDateString() }}
+              </ion-card-subtitle>
+              <ion-card-title>
+                {{ getSubByPostId(post.userId).profile.name }}
 
-#container strong {
-  font-size: 20px;
-  line-height: 26px;
-}
+              </ion-card-title>
+            </ion-card-header>
+            <ion-card-content>
+              <ion-img :src="post.photo" class="ion-margin-bottom">
 
-#container p {
-  font-size: 16px;
-  line-height: 22px;
-  
-  color: #8c8c8c;
-  
-  margin: 0;
-}
+              </ion-img>
+            </ion-card-content>
 
-#container a {
-  text-decoration: none;
-}
-</style>
+          </ion-card>
+        </ion-col>
+      </ion-row>
+
+    </ion-content>
+
+  </ion-page>
+</template>
